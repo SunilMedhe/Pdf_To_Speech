@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Audio Converter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 40px;
+            margin: 30px 0;
+            background: #f8f9ff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #28a745;
+            background: #e8f5e8;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: #667eea;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .upload-text {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+            min-width: 150px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .result-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            display: none;
+        }
+
+        .result-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .result-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .file-info {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .download-btn {
+            background: #28a745;
+            margin-top: 15px;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+            box-shadow: 0 10px 20px rgba(40, 167, 69, 0.3);
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .upload-area {
+                padding: 40px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄➡️🎵</h1>
+        <h1>PDF to Audio Converter</h1>
+        <p class="subtitle">Upload your PDF and get an instant audio summary</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Drag & drop your PDF here</div>
+            <div class="upload-hint">or click to browse files</div>
+        </div>
+
+        <input type="file" id="fileInput" accept=".pdf" />
+        
+        <button class="btn" id="uploadBtn">Choose PDF File</button>
+        <button class="btn" id="convertBtn" style="display: none;" disabled>Convert to Audio</button>
+
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div class="spinner" id="spinner"></div>
+
+        <div class="result-section" id="resultSection">
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const convertBtn = document.getElementById('convertBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const spinner = document.getElementById('spinner');
+        const resultSection = document.getElementById('resultSection');
+        const resultContent = document.getElementById('resultContent');
+
+        let selectedFile = null;
+
+        // File upload handlers
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        convertBtn.addEventListener('click', convertPdfToAudio);
+
+        function handleFileSelect(file) {
+            if (file.type !== 'application/pdf') {
+                showResult('Please select a valid PDF file.', 'error');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                showResult('File size must be less than 10MB.', 'error');
+                return;
+            }
+
+            selectedFile = file;
+            uploadArea.innerHTML = `
+                <div class="upload-icon">✅</div>
+                <div class="upload-text">${file.name}</div>
+                <div class="upload-hint">Size: ${formatFileSize(file.size)}</div>
+            `;
+            
+            convertBtn.style.display = 'inline-block';
+            convertBtn.disabled = false;
+            hideResult();
+        }
+
+        async function convertPdfToAudio() {
+            if (!selectedFile) return;
+
+            // Show loading state
+            convertBtn.disabled = true;
+            progressBar.style.display = 'block';
+            spinner.style.display = 'block';
+            hideResult();
+
+            // Animate progress bar
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 90) progress = 90;
+                progressFill.style.width = progress + '%';
+            }, 200);
+
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+
+                const response = await fetch('/api/pdf-to-audio/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+
+                setTimeout(() => {
+                    progressBar.style.display = 'none';
+                    spinner.style.display = 'none';
+                    
+                    if (result.success) {
+                        showSuccessResult(result);
+                    } else {
+                        showResult(result.error || 'Conversion failed', 'error');
+                    }
+                    
+                    convertBtn.disabled = false;
+                    progressFill.style.width = '0%';
+                }, 500);
+
+            } catch (error) {
+                clearInterval(progressInterval);
+                progressBar.style.display = 'none';
+                spinner.style.display = 'none';
+                showResult('Network error: ' + error.message, 'error');
+                convertBtn.disabled = false;
+                progressFill.style.width = '0%';
+            }
+        }
+
+        function showSuccessResult(result) {
+            const audioUrl = `/api/pdf-to-audio/download/${result.audioFileName}`;
+            
+            resultContent.innerHTML = `
+                <h3>🎉 Conversion Successful!</h3>
+                <div class="file-info">
+                    <strong>Original File:</strong> ${result.originalFileName}<br>
+                    <strong>Audio File:</strong> ${result.audioFileName}
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value">${result.extractedTextLength}</div>
+                        <div class="stat-label">Characters Extracted</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${result.summaryLength}</div>
+                        <div class="stat-label">Summary Characters</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${formatFileSize(result.audioFileSize)}</div>
+                        <div class="stat-label">Audio File Size</div>
+                    </div>
+                </div>
+
+                <div style="background: white; padding: 15px; border-radius: 10px; margin: 15px 0; text-align: left;">
+                    <strong>Summary:</strong><br>
+                    <div style="margin-top: 10px; font-style: italic; color: #666;">
+                        "${result.summary}"
+                    </div>
+                </div>
+
+                <button class="btn download-btn" onclick="downloadAudio('${result.audioFileName}')">
+                    📥 Download Audio File
+                </button>
+                <button class="btn" onclick="resetForm()">
+                    🔄 Convert Another PDF
+                </button>
+            `;
+            
+            showResult('', 'success');
+        }
+
+        function showResult(message, type) {
+            if (message) {
+                resultContent.innerHTML = `<h3>${message}</h3>`;
+            }
+            resultSection.className = 'result-section result-' + type;
+            resultSection.style.display = 'block';
+        }
+
+        function hideResult() {
+            resultSection.style.display = 'none';
+        }
+
+        function downloadAudio(fileName) {
+            const link = document.createElement('a');
+            link.href = `/api/pdf-to-audio/download/${fileName}`;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function resetForm() {
+            selectedFile = null;
+            fileInput.value = '';
+            uploadArea.innerHTML = `
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Drag & drop your PDF here</div>
+                <div class="upload-hint">or click to browse files</div>
+            `;
+            convertBtn.style.display = 'none';
+            hideResult();
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Check API health on page load
+        fetch('/api/pdf-to-audio/health')
+            .then(response => response.json())
+            .then(data => {
+                console.log('API Status:', data.status);
+            })
+            .catch(error => {
+                console.error('API not available:', error);
+            });
+    </script>
+</body>
+</html>

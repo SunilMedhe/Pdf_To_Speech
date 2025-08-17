@@ -1,0 +1,7 @@
+com\example\pdfaudio\controller\PdfToAudioController.class
+com\example\pdfaudio\PdfToAudioApiApplication.class
+com\example\pdfaudio\service\PdfTextExtractionService.class
+com\example\pdfaudio\service\TextSummarizationService.class
+com\example\pdfaudio\service\FileStorageService.class
+com\example\pdfaudio\service\TextToSpeechService.class
+com\example\pdfaudio\service\TextSummarizationService$ScoredSentence.class
