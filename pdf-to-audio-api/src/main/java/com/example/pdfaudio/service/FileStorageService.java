@@ -2,6 +2,7 @@ package com.example.pdfaudio.service;
 
 import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,6 +16,7 @@ import java.time.format.DateTimeFormatter;
 public class FileStorageService {
 
     private final String audioFilesDirectory = "audio-files";
+    private final String pdfFilesDirectory = "pdf";
 
     public String generateUniqueFileName(String originalFileName) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
@@ -68,5 +70,55 @@ public class FileStorageService {
                 FileUtils.deleteQuietly(files[i]);
             }
         }
+    }
+
+    // PDF Storage Methods
+    public void ensurePdfDirectoryExists() throws IOException {
+        Path pdfDir = Paths.get(pdfFilesDirectory);
+        if (!Files.exists(pdfDir)) {
+            Files.createDirectories(pdfDir);
+        }
+    }
+
+    public String getPdfFilesDirectory() {
+        return pdfFilesDirectory;
+    }
+
+    public String savePdfFile(MultipartFile file, String uniqueFileName) throws IOException {
+        ensurePdfDirectoryExists();
+        
+        String fileExtension = getFileExtension(file.getOriginalFilename());
+        String savedFileName = uniqueFileName + fileExtension;
+        String savedFilePath = pdfFilesDirectory + "/" + savedFileName;
+        
+        Path targetPath = Paths.get(savedFilePath);
+        Files.write(targetPath, file.getBytes());
+        
+        return savedFilePath;
+    }
+
+    public void cleanupOldPdfFiles(int maxFiles) throws IOException {
+        File pdfDir = new File(pdfFilesDirectory);
+        if (!pdfDir.exists()) {
+            return;
+        }
+
+        File[] files = pdfDir.listFiles((dir, name) -> name.endsWith(".pdf"));
+        if (files != null && files.length > maxFiles) {
+            // Sort files by last modified date (oldest first)
+            java.util.Arrays.sort(files, (f1, f2) -> Long.compare(f1.lastModified(), f2.lastModified()));
+            
+            // Delete oldest files to keep only maxFiles
+            for (int i = 0; i < files.length - maxFiles; i++) {
+                FileUtils.deleteQuietly(files[i]);
+            }
+        }
+    }
+
+    private String getFileExtension(String fileName) {
+        if (fileName == null || fileName.lastIndexOf('.') == -1) {
+            return "";
+        }
+        return fileName.substring(fileName.lastIndexOf('.'));
     }
 }

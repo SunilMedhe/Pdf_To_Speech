@@ -53,40 +53,47 @@ public class PdfToAudioController {
                 return createErrorResponse("File must be a PDF", HttpStatus.BAD_REQUEST);
             }
 
-            // Ensure audio directory exists
+            // Ensure both directories exist
             fileStorageService.ensureAudioDirectoryExists();
+            fileStorageService.ensurePdfDirectoryExists();
 
-            // Step 1: Extract text from PDF
+            // Generate unique filename
+            String uniqueFileName = fileStorageService.generateUniqueFileName(file.getOriginalFilename());
+
+            // Step 1: Save uploaded PDF file
+            String savedPdfPath = fileStorageService.savePdfFile(file, uniqueFileName);
+
+            // Step 2: Extract text from PDF
             String extractedText = pdfTextExtractionService.extractTextFromPdf(file);
             
             if (extractedText.trim().isEmpty()) {
                 return createErrorResponse("No text found in PDF", HttpStatus.BAD_REQUEST);
             }
 
-            // Step 2: Generate summary
+            // Step 3: Generate summary
             String summary = textSummarizationService.generateSummary(extractedText);
 
-            // Step 3: Generate unique filename
-            String fileName = fileStorageService.generateUniqueFileName(file.getOriginalFilename());
-
             // Step 4: Convert summary to audio with selected voice
-            String audioFilePath = textToSpeechService.convertTextToWav(summary, fileName, voiceType);
+            String audioFilePath = textToSpeechService.convertTextToWav(summary, uniqueFileName, voiceType);
             
             response.put("voiceType", voiceType);
 
             // Step 5: Cleanup old files (keep only 10 most recent)
             fileStorageService.cleanupOldFiles(10);
+            fileStorageService.cleanupOldPdfFiles(10);
 
             // Prepare successful response
             response.put("success", true);
             response.put("message", "PDF successfully converted to audio");
             response.put("originalFileName", file.getOriginalFilename());
-            response.put("audioFileName", fileName + ".wav");
+            response.put("savedPdfPath", savedPdfPath);
+            response.put("audioFileName", uniqueFileName + ".wav");
             response.put("audioFilePath", audioFilePath);
             response.put("summary", summary);
             response.put("extractedTextLength", extractedText.length());
             response.put("summaryLength", summary.length());
             response.put("audioFileSize", fileStorageService.getFileSize(audioFilePath));
+            response.put("pdfFileSize", fileStorageService.getFileSize(savedPdfPath));
 
             return ResponseEntity.ok(response);
 
@@ -110,6 +117,27 @@ public class PdfToAudioController {
             
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType("audio/wav"))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .body(resource);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/download-pdf/{fileName}")
+    public ResponseEntity<Resource> downloadPdfFile(@PathVariable String fileName) {
+        try {
+            String filePath = fileStorageService.getPdfFilesDirectory() + "/" + fileName;
+            
+            if (!fileStorageService.fileExists(filePath)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Resource resource = new FileSystemResource(filePath);
+            
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/pdf"))
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
                     .body(resource);
 
