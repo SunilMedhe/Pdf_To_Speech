@@ -20,5 +20,5 @@ jobs:
           distribution: 'temurin'
 
       - name: Build with Maven
-        working-directory: ./Pdf_To_Speech   # <-- yaha pom.xml wali folder ka path de
+        working-directory: .   # <-- yaha pom.xml wali folder ka path de
         run: mvn clean package -DskipTests
